@@ -41,6 +41,29 @@ public class User {
     @Column(name = "profile_picture")
     private String profilePicture;
 
+    // One-line pitch shown on the swipe card, e.g. "Deep-clean specialist, 6 yrs"
+    private String headline;
+
+    // Comma-separated lists, e.g. "Deep clean,Laundry" / "MON,TUE,SAT"
+    private String services;
+
+    private String languages;
+
+    @Column(name = "available_days")
+    private String availableDays;
+
+    @Column(name = "service_area")
+    private String serviceArea;
+
+    @Column(name = "years_experience")
+    private Integer yearsExperience;
+
+    @Column(name = "brings_supplies")
+    private Boolean bringsSupplies;
+
+    @Column(name = "pet_friendly")
+    private Boolean petFriendly;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

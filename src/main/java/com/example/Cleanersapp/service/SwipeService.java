@@ -2,9 +2,11 @@ package com.example.Cleanersapp.service;
 
 import com.example.Cleanersapp.dto.MatchResponse;
 import com.example.Cleanersapp.model.Match;
+import com.example.Cleanersapp.model.Message;
 import com.example.Cleanersapp.model.Swipe;
 import com.example.Cleanersapp.model.User;
 import com.example.Cleanersapp.repository.MatchRepository;
+import com.example.Cleanersapp.repository.MessageRepository;
 import com.example.Cleanersapp.repository.SwipeRepository;
 import com.example.Cleanersapp.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +28,9 @@ public class SwipeService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private MessageRepository messageRepository;
 
     /**
      * Record a swipe and return whether it created a match.
@@ -117,6 +122,8 @@ public class SwipeService {
             User other = userRepository.findById(otherId).orElse(null);
             if (other == null) continue;
 
+            Message last = messageRepository.findFirstByMatchIdOrderBySentAtDesc(m.getId()).orElse(null);
+
             result.add(new MatchResponse(
                     m.getId(),
                     other.getId(),
@@ -124,7 +131,10 @@ public class SwipeService {
                     other.getEmail(),
                     other.getRole().name(),
                     other.getProfilePicture(),
-                    m.getCreatedAt()
+                    m.getCreatedAt(),
+                    last != null ? last.getContent() : null,
+                    last != null ? last.getSentAt() : null,
+                    last != null && last.getSenderId().equals(userId)
             ));
         }
 

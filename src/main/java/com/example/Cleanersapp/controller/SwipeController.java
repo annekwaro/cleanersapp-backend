@@ -1,8 +1,10 @@
 package com.example.Cleanersapp.controller;
 
 import com.example.Cleanersapp.dto.MatchResponse;
+import com.example.Cleanersapp.dto.ProfileResponse;
 import com.example.Cleanersapp.model.User;
 import com.example.Cleanersapp.repository.UserRepository;
+import com.example.Cleanersapp.service.ProfileService;
 import com.example.Cleanersapp.service.SwipeService;
 import com.example.Cleanersapp.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +20,9 @@ public class SwipeController {
 
     @Autowired
     private SwipeService swipeService;
+
+    @Autowired
+    private ProfileService profileService;
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -58,17 +63,9 @@ public class SwipeController {
         Long userId = getCurrentUserId(authHeader);
         List<User> profiles = swipeService.getSwipeableProfiles(userId);
 
-        // Return only safe fields
-        List<Map<String, Object>> safeProfiles = profiles.stream()
-                .map(u -> Map.<String, Object>of(
-                        "id", u.getId(),
-                        "name", u.getName(),
-                        "role", u.getRole().name(),
-                        "bio", u.getBio() == null ? "" : u.getBio(),
-                        "hourlyRate", u.getHourlyRate() == null ? 0 : u.getHourlyRate(),
-                        "rating", u.getRating() == null ? 0 : u.getRating(),
-                        "profilePicture", u.getProfilePicture() == null ? "" : u.getProfilePicture()
-                ))
+        // Public card fields only (no email)
+        List<ProfileResponse> safeProfiles = profiles.stream()
+                .map(profileService::toCard)
                 .toList();
 
         return ResponseEntity.ok(safeProfiles);

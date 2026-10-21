@@ -15,4 +15,7 @@ public class MatchResponse {
     private String otherUserRole;
     private String otherUserProfilePicture;
     private LocalDateTime matchedAt;
+    private String lastMessage;
+    private LocalDateTime lastMessageAt;
+    private boolean lastMessageMine;
 }
