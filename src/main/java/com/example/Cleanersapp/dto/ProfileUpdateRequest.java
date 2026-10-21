@@ -18,4 +18,5 @@ public class ProfileUpdateRequest {
     private Integer yearsExperience;
     private Boolean bringsSupplies;
     private Boolean petFriendly;
+    private Boolean acceptsDirectRequests;
 }

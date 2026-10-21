@@ -2,11 +2,17 @@ package com.example.Cleanersapp.service;
 
 import com.example.Cleanersapp.dto.BookingRequest;
 import com.example.Cleanersapp.dto.BookingResponse;
+import com.example.Cleanersapp.dto.DirectBookingRequest;
+import com.example.Cleanersapp.dto.DirectBookingResponse;
 import com.example.Cleanersapp.model.Booking;
 import com.example.Cleanersapp.model.Match;
+import com.example.Cleanersapp.model.Message;
+import com.example.Cleanersapp.model.Swipe;
 import com.example.Cleanersapp.model.User;
 import com.example.Cleanersapp.repository.BookingRepository;
 import com.example.Cleanersapp.repository.MatchRepository;
+import com.example.Cleanersapp.repository.MessageRepository;
+import com.example.Cleanersapp.repository.SwipeRepository;
 import com.example.Cleanersapp.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -27,6 +33,12 @@ public class BookingService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private SwipeRepository swipeRepository;
+
+    @Autowired
+    private MessageRepository messageRepository;
+
     /**
      * Propose a cleaning slot inside a match. Either side can propose; the other side responds.
      */
@@ -38,13 +50,7 @@ public class BookingService {
                 .orElseThrow(() -> new RuntimeException("Match not found"));
         requireParticipant(match, userId);
 
-        if (request.getStartAt() == null || request.getStartAt().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Pick a start time in the future");
-        }
-        Double hours = request.getDurationHours();
-        if (hours == null || hours < 1 || hours > 12) {
-            throw new RuntimeException("Duration must be between 1 and 12 hours");
-        }
+        validateSlot(request.getStartAt(), request.getDurationHours());
 
         Long otherId = match.getUser1Id().equals(userId) ? match.getUser2Id() : match.getUser1Id();
         User me = userRepository.findById(userId).orElseThrow();
@@ -56,20 +62,86 @@ public class BookingService {
         User cleaner = me.getRole() == User.Role.CLEANER ? me : other;
         User homeowner = me.getRole() == User.Role.HOMEOWNER ? me : other;
 
+        Booking booking = newRequest(match.getId(), homeowner, cleaner, userId,
+                request.getStartAt(), request.getDurationHours(), request.getAddress(), request.getNotes());
+        return toResponse(booking, userId);
+    }
+
+    /**
+     * Homeowner requests a slot straight from a cleaner's profile. Opens (or reuses)
+     * the conversation so both sides can talk while the cleaner decides.
+     */
+    public DirectBookingResponse createDirect(Long userId, DirectBookingRequest request) {
+        User homeowner = userRepository.findById(userId).orElseThrow();
+        if (homeowner.getRole() != User.Role.HOMEOWNER) {
+            throw new RuntimeException("Only homeowners can send direct requests");
+        }
+        if (request.getCleanerId() == null) {
+            throw new RuntimeException("cleanerId is required");
+        }
+        User cleaner = userRepository.findById(request.getCleanerId())
+                .orElseThrow(() -> new RuntimeException("Cleaner not found"));
+        if (cleaner.getRole() != User.Role.CLEANER) {
+            throw new RuntimeException("You can only request a cleaner");
+        }
+        if (!cleaner.acceptsDirectRequests()) {
+            throw new RuntimeException(cleaner.getName() + " only takes bookings after a match — try liking them instead");
+        }
+        validateSlot(request.getStartAt(), request.getDurationHours());
+
+        // A request counts as a like, so the cleaner leaves the homeowner's deck
+        if (!swipeRepository.existsBySwiperIdAndSwipedId(userId, cleaner.getId())) {
+            Swipe like = new Swipe();
+            like.setSwiperId(userId);
+            like.setSwipedId(cleaner.getId());
+            like.setDirection("LIKE");
+            swipeRepository.save(like);
+        }
+
+        Match match = matchRepository.findBetweenUsers(userId, cleaner.getId()).orElseGet(() -> {
+            Match m = new Match();
+            m.setUser1Id(userId);
+            m.setUser2Id(cleaner.getId());
+            return matchRepository.save(m);
+        });
+
+        String message = trimToNull(request.getMessage());
+        if (message != null) {
+            Message first = new Message();
+            first.setMatchId(match.getId());
+            first.setSenderId(userId);
+            first.setContent(message);
+            messageRepository.save(first);
+        }
+
+        Booking booking = newRequest(match.getId(), homeowner, cleaner, userId,
+                request.getStartAt(), request.getDurationHours(), request.getAddress(), request.getNotes());
+        return new DirectBookingResponse(match.getId(), toResponse(booking, userId));
+    }
+
+    private void validateSlot(LocalDateTime startAt, Double hours) {
+        if (startAt == null || startAt.isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Pick a start time in the future");
+        }
+        if (hours == null || hours < 1 || hours > 12) {
+            throw new RuntimeException("Duration must be between 1 and 12 hours");
+        }
+    }
+
+    private Booking newRequest(Long matchId, User homeowner, User cleaner, Long requestedBy,
+                               LocalDateTime startAt, Double hours, String address, String notes) {
         Booking booking = new Booking();
-        booking.setMatchId(match.getId());
+        booking.setMatchId(matchId);
         booking.setHomeownerId(homeowner.getId());
         booking.setCleanerId(cleaner.getId());
-        booking.setRequestedBy(userId);
-        booking.setStartAt(request.getStartAt());
+        booking.setRequestedBy(requestedBy);
+        booking.setStartAt(startAt);
         booking.setDurationHours(hours);
         booking.setHourlyRate(cleaner.getHourlyRate() == null ? 0 : cleaner.getHourlyRate());
-        booking.setAddress(trimToNull(request.getAddress()));
-        booking.setNotes(trimToNull(request.getNotes()));
+        booking.setAddress(trimToNull(address));
+        booking.setNotes(trimToNull(notes));
         booking.setStatus(Booking.Status.REQUESTED);
-        bookingRepository.save(booking);
-
-        return toResponse(booking, userId);
+        return bookingRepository.save(booking);
     }
 
     public List<BookingResponse> listMine(Long userId) {

@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface MatchRepository extends JpaRepository<Match, Long> {
@@ -17,4 +18,8 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
     @Query("SELECT CASE WHEN COUNT(m) > 0 THEN true ELSE false END FROM Match m " +
            "WHERE (m.user1Id = :a AND m.user2Id = :b) OR (m.user1Id = :b AND m.user2Id = :a)")
     boolean existsBetweenUsers(@Param("a") Long a, @Param("b") Long b);
+
+    @Query("SELECT m FROM Match m " +
+           "WHERE (m.user1Id = :a AND m.user2Id = :b) OR (m.user1Id = :b AND m.user2Id = :a)")
+    Optional<Match> findBetweenUsers(@Param("a") Long a, @Param("b") Long b);
 }

@@ -1,6 +1,7 @@
 package com.example.Cleanersapp.controller;
 
 import com.example.Cleanersapp.dto.BookingRequest;
+import com.example.Cleanersapp.dto.DirectBookingRequest;
 import com.example.Cleanersapp.model.User;
 import com.example.Cleanersapp.repository.UserRepository;
 import com.example.Cleanersapp.service.BookingService;
@@ -45,6 +46,12 @@ public class BookingController {
     public ResponseEntity<?> create(@RequestHeader("Authorization") String authHeader,
                                     @RequestBody BookingRequest request) {
         return handle(() -> bookingService.create(getCurrentUserId(authHeader), request));
+    }
+
+    @PostMapping("/direct")
+    public ResponseEntity<?> createDirect(@RequestHeader("Authorization") String authHeader,
+                                          @RequestBody DirectBookingRequest request) {
+        return handle(() -> bookingService.createDirect(getCurrentUserId(authHeader), request));
     }
 
     @GetMapping

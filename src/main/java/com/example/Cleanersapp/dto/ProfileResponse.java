@@ -24,5 +24,6 @@ public class ProfileResponse {
     private Integer yearsExperience;
     private Boolean bringsSupplies;
     private Boolean petFriendly;
+    private boolean acceptsDirectRequests;
     private long completedJobs;
 }

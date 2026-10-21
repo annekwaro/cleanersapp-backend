@@ -92,6 +92,9 @@ public class ProfileService {
         if (request.getPetFriendly() != null) {
             user.setPetFriendly(request.getPetFriendly());
         }
+        if (request.getAcceptsDirectRequests() != null) {
+            user.setAcceptsDirectRequests(request.getAcceptsDirectRequests());
+        }
 
         // Hourly rate can only be updated by cleaners
         if (request.getHourlyRate() != null) {
@@ -132,6 +135,7 @@ public class ProfileService {
                 .yearsExperience(user.getYearsExperience())
                 .bringsSupplies(user.getBringsSupplies())
                 .petFriendly(user.getPetFriendly())
+                .acceptsDirectRequests(user.getRole() == User.Role.CLEANER && user.acceptsDirectRequests())
                 .completedJobs(completedJobs)
                 .build();
     }

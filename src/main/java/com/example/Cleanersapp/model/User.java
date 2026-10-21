@@ -64,6 +64,15 @@ public class User {
     @Column(name = "pet_friendly")
     private Boolean petFriendly;
 
+    // Cleaners only: homeowners may send a booking request without a mutual like.
+    // Null (existing accounts) counts as yes.
+    @Column(name = "accepts_direct_requests")
+    private Boolean acceptsDirectRequests;
+
+    public boolean acceptsDirectRequests() {
+        return acceptsDirectRequests == null || acceptsDirectRequests;
+    }
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
